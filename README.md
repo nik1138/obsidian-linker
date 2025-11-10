@@ -1,0 +1,120 @@
+# Obsidian Linker
+
+Node.js проект для нахождения концептуальных связей в хранилище Obsidian с использованием NLP-анализа.
+
+## Описание
+
+Этот проект анализирует заметки в формате Markdown из хранилища Obsidian и находит скрытые концептуальные связи между ними, используя методы обработки естественного языка. В отличие от стандартных ссылок Obsidian, этот инструмент может находить связи, которые не очевидны при обычном просмотре.
+
+## Особенности
+
+- Анализирует .md файлы из хранилища Obsidian
+- Находит концептуальные связи между заметками
+- Работает с большими хранилищами (более 10,000 заметок)
+- Использует кэширование для оптимизации производительности
+- Сохраняет результаты в JSON файл
+- Предоставляет CLI интерфейс для запуска анализа
+
+## Установка
+
+```bash
+# Клонируйте репозиторий
+git clone <repository-url>
+cd obsidian-linker
+
+# Установите зависимости
+npm install
+
+# Запустите тест для проверки работы
+npm test
+```
+
+## Использование
+
+```bash
+# Анализ всего хранилища
+node index.js analyze --vault /path/to/your/vault
+
+# Анализ с сохранением результатов в файл
+node index.js analyze --vault /path/to/your/vault --output links.json
+
+# Анализ с настройкой порога схожести (0-1)
+node index.js analyze --vault /path/to/your/vault --threshold 0.4
+
+# Анализ с ограничением количества связей на заметку
+node index.js analyze --vault /path/to/your/vault --max-links 10
+
+# Инкрементальный анализ (только измененные файлы)
+node index.js analyze --vault /path/to/your/vault --incremental
+
+# Очистка кэша перед анализом
+node index.js analyze --vault /path/to/your/vault --clear-cache
+
+# Подробный вывод (для отладки)
+node index.js analyze --vault /path/to/your/vault --verbose
+
+# Вставка найденных связей в заметки
+node index.js insert --input links.json
+
+# Вставка связей с настраиваемым заголовком раздела
+node index.js insert --input links.json --title "Похожие статьи"
+
+# Вставка ограниченного количества связей
+node index.js insert --input links.json --limit 5
+
+# Удаление вставленных связей
+node index.js insert --input links.json --remove
+```
+
+## Параметры командной строки
+
+### Команда analyze
+- `-v, --vault <path>` - путь к хранилищу Obsidian (обязательный)
+- `-o, --output <file>` - файл для сохранения результатов (по умолчанию: links.json)
+- `-t, --threshold <number>` - порог схожести для определения связей (0-1, по умолчанию: 0.5)
+- `-m, --max-links <number>` - максимальное количество связей на заметку (по умолчанию: 10)
+- `--incremental` - инкрементальный анализ (только измененные файлы)
+- `--clear-cache` - очистка кэша перед анализом
+- `--verbose` - подробный вывод для отладки
+
+### Команда insert
+- `-i, --input <file>` - файл с результатами анализа (обязательный)
+- `--remove` - удаление вставленных связей вместо добавления
+- `-t, --title <title>` - настраиваемый заголовок для раздела связей (по умолчанию: "Связанные заметки")
+- `-g, --group-by <criteria>` - группировка связей по критериям (file, similarity) (по умолчанию: file)
+- `-l, --limit <number>` - ограничение количества связей на файл
+- `--verbose` - подробный вывод для отладки
+
+## Файл конфигурации
+
+Вы можете создать файл `config.json` в корневой директории проекта для настройки параметров по умолчанию:
+
+```json
+{
+  "vaultPath": "/path/to/your/obsidian/vault",
+  "outputFile": "obsidian-links.json",
+  "similarityThreshold": 0.5,
+  "maxLinksPerNote": 10,
+  "incremental": false,
+  "clearCache": false,
+  "verbose": false
+}
+```
+
+## Структура проекта
+
+- `index.js` - Точка входа
+- `src/vault-reader.js` - Модуль для работы с файлами хранилища
+- `src/nlp-processor.js` - Модуль для NLP-анализа
+- `src/link-finder.js` - Модуль для поиска связей
+- `src/cache-manager.js` - Модуль для кэширования
+- `src/link-inserter.js` - Модуль для вставки связей в файлы
+- `src/cli.js` - CLI интерфейс
+
+## Документация
+
+- [API Documentation](docs/api.md) - Подробная документация по API
+
+## Лицензия
+
+MIT

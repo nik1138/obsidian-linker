@@ -1,0 +1,18 @@
+{
+  "vaultPath": "/path/to/your/obsidian/vault",
+  "outputFile": "obsidian-links.json",
+  "similarityThreshold": 0.5,
+  "maxLinksPerNote": 10,
+  "incremental": false,
+  "clearCache": false,
+  "verbose": false,
+  "cache": {
+    "enabled": true,
+    "path": "./cache",
+    "maxAge": 604800000
+  },
+  "nlp": {
+    "model": "Xenova/all-MiniLM-L6-v2",
+    "maxTextLength": 512
+  }
+}
