@@ -33,6 +33,7 @@ class LinkFinder {
       // Apply options
       const threshold = options.threshold || this.similarityThreshold;
       const maxLinks = options.maxLinksPerNote || this.maxLinksPerNote;
+      const adjustLowLinks = options.adjustLowLinks || false;
       
       // Extract text content from notes
       const texts = notes.map(note => note.textContent || note.content);
@@ -85,7 +86,17 @@ class LinkFinder {
         
         // Sort by similarity and take top N
         similarities.sort((a, b) => b.similarity - a.similarity);
-        const topSimilarities = similarities.slice(0, maxLinks);
+        let topSimilarities = similarities.slice(0, maxLinks);
+        
+        // Adjust similarity for notes with few links if enabled
+        if (adjustLowLinks && topSimilarities.length <= 1) {
+          // Reduce similarity by 5% for notes with 1 or fewer links
+          topSimilarities = topSimilarities.map(link => ({
+            ...link,
+            similarity: link.similarity * 0.95
+          }));
+          this.logger.debug(`Adjusted similarity for note with few links: ${sourceName}`);
+        }
         
         // Add to links array
         links.push(...topSimilarities);
@@ -113,6 +124,7 @@ class LinkFinder {
     try {
       const threshold = options.threshold || this.similarityThreshold;
       const maxLinks = options.maxLinksPerNote || this.maxLinksPerNote;
+      const adjustLowLinks = options.adjustLowLinks || false;
       
       // Extract text content
       const sourceText = sourceNote.textContent || sourceNote.content;
@@ -155,7 +167,17 @@ class LinkFinder {
       
       // Sort by similarity and take top N
       similarities.sort((a, b) => b.similarity - a.similarity);
-      const topSimilarities = similarities.slice(0, maxLinks);
+      let topSimilarities = similarities.slice(0, maxLinks);
+      
+      // Adjust similarity for notes with few links if enabled
+      if (adjustLowLinks && topSimilarities.length <= 1) {
+        // Reduce similarity by 5% for notes with 1 or fewer links
+        topSimilarities = topSimilarities.map(link => ({
+          ...link,
+          similarity: link.similarity * 0.95
+        }));
+        this.logger.debug(`Adjusted similarity for note with few links: ${sourceNote.name}`);
+      }
       
       this.logger.info(`Found ${topSimilarities.length} links for note: ${sourceNote.name}`);
       

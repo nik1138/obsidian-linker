@@ -44,6 +44,9 @@ node index.js analyze --vault /path/to/your/vault --threshold 0.4
 # Анализ с ограничением количества связей на заметку
 node index.js analyze --vault /path/to/your/vault --max-links 10
 
+# Анализ с понижением достоверности для файлов с низким количеством связей (понижает оценку на 5% для файлов с 1 или менее связями)
+node index.js analyze --vault /path/to/your/vault --adjust-low-links
+
 # Инкрементальный анализ (только измененные файлы)
 node index.js analyze --vault /path/to/your/vault --incremental
 
@@ -73,6 +76,7 @@ node index.js insert --input links.json --remove
 - `-o, --output <file>` - файл для сохранения результатов (по умолчанию: links.json)
 - `-t, --threshold <number>` - порог схожести для определения связей (0-1, по умолчанию: 0.5)
 - `-m, --max-links <number>` - максимальное количество связей на заметку (по умолчанию: 10)
+- `--adjust-low-links` - понижение достоверности для файлов с низким количеством связей (понижает оценку на 5% для файлов с 1 или менее связями)
 - `--incremental` - инкрементальный анализ (только измененные файлы)
 - `--clear-cache` - очистка кэша перед анализом
 - `--verbose` - подробный вывод для отладки

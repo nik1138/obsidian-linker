@@ -41,6 +41,7 @@ class CLI {
       .option('-o, --output <file>', 'output file for links (JSON format)', 'links.json')
       .option('-t, --threshold <number>', 'similarity threshold (0-1)', '0.5')
       .option('-m, --max-links <number>', 'maximum links per note', '10')
+      .option('--adjust-low-links', 'adjust similarity for notes with few links')
       .option('--incremental', 'incremental analysis (only changed files)')
       .option('--clear-cache', 'clear cache before analysis')
       .option('--verbose', 'enable verbose logging')
@@ -147,7 +148,8 @@ class CLI {
       // Find conceptual links
       const links = await this.linkFinder.findLinks(notes, {
         threshold: threshold,
-        maxLinksPerNote: maxLinks
+        maxLinksPerNote: maxLinks,
+        adjustLowLinks: options.adjustLowLinks
       });
       
       this.logger.info(`Found ${links.length} conceptual links`);
