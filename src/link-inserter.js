@@ -9,8 +9,9 @@ class LinkInserter {
    * Constructor
    * @param {Object} logger - Logger instance
    */
-  constructor(logger) {
+  constructor(logger, backupManager) {
     this.logger = logger;
+    this.backupManager = backupManager;
   }
 
   /**
@@ -20,6 +21,68 @@ class LinkInserter {
    * @returns {Promise<void>}
    */
   async insertLinks(resultsPath, options = {}) {
+    try {
+      this.logger.info(`Inserting links from ${resultsPath}`);
+      
+      // Read analysis results
+      const results = await fs.readJson(resultsPath);
+      
+      if (!results.links || !Array.isArray(results.links)) {
+        throw new Error('Invalid results format: missing links array');
+      }
+      
+      this.logger.info(`Found ${results.links.length} links to insert`);
+      
+      // Apply limit if specified
+      let linksToInsert = results.links;
+      if (options.limit && options.limit > 0) {
+        // Sort by similarity and take top N
+        linksToInsert = [...results.links]
+          .sort((a, b) => b.similarity - a.similarity)
+          .slice(0, options.limit);
+        this.logger.debug(`Limited to top ${options.limit} links`);
+      }
+      
+      // Group links by source file
+      const linksBySource = this.groupLinksBySource(linksToInsert);
+      
+      // Create backup before inserting links if backup manager is available
+      if (this.backupManager) {
+        const sourceFiles = Object.keys(linksBySource);
+        if (sourceFiles.length > 0) {
+          // Get vault path from first file
+          const firstFilePath = sourceFiles[0];
+          const vaultPath = path.dirname(firstFilePath);
+          
+          this.logger.info(`Creating backup for ${sourceFiles.length} files`);
+          const backupId = await this.backupManager.createBackup(sourceFiles, vaultPath);
+          this.logger.info(`Backup created with ID: ${backupId}`);
+        }
+      }
+      
+      // Insert links into each file
+      for (const [sourcePath, links] of Object.entries(linksBySource)) {
+        try {
+          await this.insertLinksIntoFile(sourcePath, links, options);
+        } catch (error) {
+          this.logger.error(`Error inserting links into ${sourcePath}:`, error);
+        }
+      }
+      
+      this.logger.info('Link insertion completed successfully');
+    } catch (error) {
+      this.logger.error('Error inserting links:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Insert links into Obsidian notes based on analysis results (without backup)
+   * @param {string} resultsPath - Path to JSON file with analysis results
+   * @param {Object} options - Insertion options
+   * @returns {Promise<void>}
+   */
+  async insertLinksWithoutBackup(resultsPath, options = {}) {
     try {
       this.logger.info(`Inserting links from ${resultsPath}`);
       
