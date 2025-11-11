@@ -18,6 +18,12 @@ class LinkFinder {
     
     // Maximum number of links to find per note
     this.maxLinksPerNote = 10;
+    
+    // Minimum threshold for iterative adjustment
+    this.minAdjustmentThreshold = 0.1;
+    
+    // Adjustment step for iterative process
+    this.adjustmentStep = 0.05;
   }
 
   /**
@@ -34,6 +40,7 @@ class LinkFinder {
       const threshold = options.threshold || this.similarityThreshold;
       const maxLinks = options.maxLinksPerNote || this.maxLinksPerNote;
       const adjustLowLinks = options.adjustLowLinks || false;
+      const iterativeAdjustment = options.iterativeAdjustment || false;
       
       // Extract text content from notes
       const texts = notes.map(note => note.textContent || note.content);
@@ -56,31 +63,80 @@ class LinkFinder {
         const sourceName = noteNames[i];
         
         // Store similarities for this note
-        const similarities = [];
+        let similarities = [];
         
-        for (let j = 0; j < notes.length; j++) {
-          // Skip comparing note with itself
-          if (i === j) continue;
+        // For iterative adjustment, we start with the base threshold
+        let currentThreshold = threshold;
+        
+        // If iterative adjustment is enabled, we'll adjust the threshold until we have enough links
+        if (iterativeAdjustment) {
+          let iterationCount = 0;
+          const maxIterations = Math.ceil((threshold - this.minAdjustmentThreshold) / this.adjustmentStep);
           
-          const targetNote = notes[j];
-          const targetEmbedding = embeddings[j];
-          const targetName = noteNames[j];
-          
-          // Calculate cosine similarity
-          const similarity = this.nlpProcessor.cosineSimilarity(
-            sourceEmbedding,
-            targetEmbedding
-          );
-          
-          // Only consider if above threshold
-          if (similarity >= threshold) {
-            similarities.push({
-              source: sourceName,
-              target: targetName,
-              similarity: similarity,
-              sourcePath: sourceNote.path,
-              targetPath: targetNote.path
-            });
+          do {
+            similarities = [];
+            
+            for (let j = 0; j < notes.length; j++) {
+              // Skip comparing note with itself
+              if (i === j) continue;
+              
+              const targetNote = notes[j];
+              const targetEmbedding = embeddings[j];
+              const targetName = noteNames[j];
+              
+              // Calculate cosine similarity
+              const similarity = this.nlpProcessor.cosineSimilarity(
+                sourceEmbedding,
+                targetEmbedding
+              );
+              
+              // Only consider if above current threshold
+              if (similarity >= currentThreshold) {
+                similarities.push({
+                  source: sourceName,
+                  target: targetName,
+                  similarity: similarity,
+                  sourcePath: sourceNote.path,
+                  targetPath: targetNote.path
+                });
+              }
+            }
+            
+            // If we have enough links or we've reached the minimum threshold, break
+            if (similarities.length >= 3 || currentThreshold <= this.minAdjustmentThreshold) {
+              break;
+            }
+            
+            // Reduce threshold for next iteration
+            currentThreshold -= this.adjustmentStep;
+            iterationCount++;
+          } while (iterationCount < maxIterations);
+        } else {
+          // Standard approach without iterative adjustment
+          for (let j = 0; j < notes.length; j++) {
+            // Skip comparing note with itself
+            if (i === j) continue;
+            
+            const targetNote = notes[j];
+            const targetEmbedding = embeddings[j];
+            const targetName = noteNames[j];
+            
+            // Calculate cosine similarity
+            const similarity = this.nlpProcessor.cosineSimilarity(
+              sourceEmbedding,
+              targetEmbedding
+            );
+            
+            // Only consider if above threshold
+            if (similarity >= threshold) {
+              similarities.push({
+                source: sourceName,
+                target: targetName,
+                similarity: similarity,
+                sourcePath: sourceNote.path,
+                targetPath: targetNote.path
+              });
+            }
           }
         }
         
@@ -125,6 +181,7 @@ class LinkFinder {
       const threshold = options.threshold || this.similarityThreshold;
       const maxLinks = options.maxLinksPerNote || this.maxLinksPerNote;
       const adjustLowLinks = options.adjustLowLinks || false;
+      const iterativeAdjustment = options.iterativeAdjustment || false;
       
       // Extract text content
       const sourceText = sourceNote.textContent || sourceNote.content;
@@ -135,33 +192,84 @@ class LinkFinder {
       const sourceEmbedding = await this.nlpProcessor.extractEmbeddings(sourceText);
       
       // Find similarities
-      const similarities = [];
+      let similarities = [];
       
-      for (const targetNote of allNotes) {
-        // Skip comparing note with itself
-        if (sourceNote.path === targetNote.path) continue;
+      // For iterative adjustment, we start with the base threshold
+      let currentThreshold = threshold;
+      
+      // If iterative adjustment is enabled, we'll adjust the threshold until we have enough links
+      if (iterativeAdjustment) {
+        let iterationCount = 0;
+        const maxIterations = Math.ceil((threshold - this.minAdjustmentThreshold) / this.adjustmentStep);
         
-        // Extract text content
-        const targetText = targetNote.textContent || targetNote.content;
-        
-        // Extract embedding for target note
-        const targetEmbedding = await this.nlpProcessor.extractEmbeddings(targetText);
-        
-        // Calculate cosine similarity
-        const similarity = this.nlpProcessor.cosineSimilarity(
-          sourceEmbedding,
-          targetEmbedding
-        );
-        
-        // Only consider if above threshold
-        if (similarity >= threshold) {
-          similarities.push({
-            source: sourceNote.name,
-            target: targetNote.name,
-            similarity: similarity,
-            sourcePath: sourceNote.path,
-            targetPath: targetNote.path
-          });
+        do {
+          similarities = [];
+          
+          for (const targetNote of allNotes) {
+            // Skip comparing note with itself
+            if (sourceNote.path === targetNote.path) continue;
+            
+            // Extract text content
+            const targetText = targetNote.textContent || targetNote.content;
+            
+            // Extract embedding for target note
+            const targetEmbedding = await this.nlpProcessor.extractEmbeddings(targetText);
+            
+            // Calculate cosine similarity
+            const similarity = this.nlpProcessor.cosineSimilarity(
+              sourceEmbedding,
+              targetEmbedding
+            );
+            
+            // Only consider if above current threshold
+            if (similarity >= currentThreshold) {
+              similarities.push({
+                source: sourceNote.name,
+                target: targetNote.name,
+                similarity: similarity,
+                sourcePath: sourceNote.path,
+                targetPath: targetNote.path
+              });
+            }
+          }
+          
+          // If we have enough links or we've reached the minimum threshold, break
+          if (similarities.length >= 3 || currentThreshold <= this.minAdjustmentThreshold) {
+            break;
+          }
+          
+          // Reduce threshold for next iteration
+          currentThreshold -= this.adjustmentStep;
+          iterationCount++;
+        } while (iterationCount < maxIterations);
+      } else {
+        // Standard approach without iterative adjustment
+        for (const targetNote of allNotes) {
+          // Skip comparing note with itself
+          if (sourceNote.path === targetNote.path) continue;
+          
+          // Extract text content
+          const targetText = targetNote.textContent || targetNote.content;
+          
+          // Extract embedding for target note
+          const targetEmbedding = await this.nlpProcessor.extractEmbeddings(targetText);
+          
+          // Calculate cosine similarity
+          const similarity = this.nlpProcessor.cosineSimilarity(
+            sourceEmbedding,
+            targetEmbedding
+          );
+          
+          // Only consider if above threshold
+          if (similarity >= threshold) {
+            similarities.push({
+              source: sourceNote.name,
+              target: targetNote.name,
+              similarity: similarity,
+              sourcePath: sourceNote.path,
+              targetPath: targetNote.path
+            });
+          }
         }
       }
       

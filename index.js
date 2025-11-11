@@ -19,7 +19,6 @@ const LinkFinder = require('./src/link-finder');
 const CacheManager = require('./src/cache-manager');
 const LinkInserter = require('./src/link-inserter');
 const CLI = require('./src/cli');
-const WebServer = require('./src/web/server');
 
 // Setup logger
 const logger = winston.createLogger({
@@ -50,12 +49,5 @@ const linkFinder = new LinkFinder(nlpProcessor, logger);
 const linkInserter = new LinkInserter(logger);
 const cli = new CLI(program, vaultReader, linkFinder, cacheManager, linkInserter, logger);
 
-// Check if web server mode is requested
-if (process.argv.includes('--web')) {
-  // Start web server
-  const webServer = new WebServer();
-  webServer.start();
-} else {
-  // Run the CLI
-  cli.run();
-}
+// Run the CLI
+cli.run();

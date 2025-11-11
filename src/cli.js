@@ -1,5 +1,7 @@
 const fs = require('fs-extra');
 const path = require('path');
+const chalk = require('chalk');
+const cliProgress = require('cli-progress');
 
 /**
  * CLI - Command Line Interface for Obsidian Linker
@@ -42,6 +44,7 @@ class CLI {
       .option('-t, --threshold <number>', 'similarity threshold (0-1)', '0.5')
       .option('-m, --max-links <number>', 'maximum links per note', '10')
       .option('--adjust-low-links', 'adjust similarity for notes with few links')
+      .option('--iterative-adjustment', 'iteratively adjust threshold for notes with few links until minimum 3 links are found')
       .option('--incremental', 'incremental analysis (only changed files)')
       .option('--clear-cache', 'clear cache before analysis')
       .option('--verbose', 'enable verbose logging')
@@ -104,12 +107,25 @@ class CLI {
       
       this.logger.info(`Processing ${files.length} files`);
       
+      // Create progress bar
+      const progressBar = new cliProgress.SingleBar({
+        format: chalk.cyan('Processing files') + ' [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} files',
+        barCompleteChar: '\u2588',
+        barIncompleteChar: '\u2591',
+        hideCursor: true
+      });
+      
       // Read and process files
       const notes = [];
       const fileMetadataList = [];
       
-      for (const filePath of files) {
+      progressBar.start(files.length, 0);
+      
+      for (const [index, filePath] of files.entries()) {
         try {
+          // Update progress bar
+          progressBar.update(index);
+          
           // Get file metadata for caching
           const fileMetadata = await this.vaultReader.getFileMetadata(filePath);
           fileMetadataList.push(fileMetadata);
@@ -131,6 +147,9 @@ class CLI {
         }
       }
       
+      // Stop progress bar
+      progressBar.stop();
+      
       if (notes.length === 0) {
         this.logger.warn('No files to process');
         return;
@@ -145,14 +164,31 @@ class CLI {
       this.linkFinder.setSimilarityThreshold(threshold);
       this.linkFinder.setMaxLinksPerNote(maxLinks);
       
-      // Find conceptual links
+      // Create progress bar for analysis
+      const analysisProgressBar = new cliProgress.SingleBar({
+        format: chalk.yellow('Analyzing notes') + ' [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} notes',
+        barCompleteChar: '\u2588',
+        barIncompleteChar: '\u2591',
+        hideCursor: true
+      });
+      
+      analysisProgressBar.start(notes.length, 0);
+      
+      // Find conceptual links with progress tracking
       const links = await this.linkFinder.findLinks(notes, {
         threshold: threshold,
         maxLinksPerNote: maxLinks,
-        adjustLowLinks: options.adjustLowLinks
+        adjustLowLinks: options.adjustLowLinks,
+        iterativeAdjustment: options.iterativeAdjustment,
+        onProgress: (current, total) => {
+          analysisProgressBar.update(current);
+        }
       });
       
-      this.logger.info(`Found ${links.length} conceptual links`);
+      // Stop progress bar
+      analysisProgressBar.stop();
+      
+      this.logger.info(chalk.green(`Found ${links.length} conceptual links`));
       
       // Group links by source note
       const groupedLinks = this.linkFinder.groupLinksBySource(links);
@@ -185,7 +221,7 @@ class CLI {
       
       this.logger.info('Obsidian Linker analysis completed successfully');
     } catch (error) {
-      this.logger.error('Error running Obsidian Linker analysis:', error);
+      this.logger.error(chalk.red('Error running Obsidian Linker analysis:'), error);
       process.exit(1);
     }
   }
@@ -230,7 +266,7 @@ class CLI {
         this.logger.info('Link insertion completed successfully');
       }
     } catch (error) {
-      this.logger.error('Error running link insertion:', error);
+      this.logger.error(chalk.red('Error running link insertion:'), error);
       process.exit(1);
     }
   }
@@ -240,33 +276,33 @@ class CLI {
    * @param {Object} results - Analysis results
    */
   logSummary(results) {
-    console.log('\n=== Obsidian Linker Results ===');
-    console.log(`Vault Path: ${results.metadata.vaultPath}`);
-    console.log(`Total Files: ${results.metadata.totalFiles}`);
-    console.log(`Processed Notes: ${results.metadata.processedNotes}`);
-    console.log(`Total Links Found: ${results.metadata.totalLinks}`);
-    console.log(`Similarity Threshold: ${results.metadata.similarityThreshold}`);
-    console.log(`Max Links Per Note: ${results.metadata.maxLinksPerNote}`);
-    console.log(`Analysis Timestamp: ${results.metadata.timestamp}`);
+    console.log('\n' + chalk.bold.blue('=== Obsidian Linker Results ==='));
+    console.log(chalk.cyan('Vault Path: ') + results.metadata.vaultPath);
+    console.log(chalk.cyan('Total Files: ') + chalk.yellow(results.metadata.totalFiles));
+    console.log(chalk.cyan('Processed Notes: ') + chalk.yellow(results.metadata.processedNotes));
+    console.log(chalk.cyan('Total Links Found: ') + chalk.green(results.metadata.totalLinks));
+    console.log(chalk.cyan('Similarity Threshold: ') + chalk.yellow(results.metadata.similarityThreshold));
+    console.log(chalk.cyan('Max Links Per Note: ') + chalk.yellow(results.metadata.maxLinksPerNote));
+    console.log(chalk.cyan('Analysis Timestamp: ') + results.metadata.timestamp);
     
     // Show cache stats
     const cacheStats = this.cacheManager.getCacheStats();
-    console.log(`\nCache Stats:`);
-    console.log(`  Memory Cache Size: ${cacheStats.memoryCacheSize}`);
-    console.log(`  Disk Cache Size: ${cacheStats.diskCacheSize}`);
+    console.log(chalk.bold('\nCache Stats:'));
+    console.log(chalk.cyan('  Memory Cache Size: ') + chalk.yellow(cacheStats.memoryCacheSize));
+    console.log(chalk.cyan('  Disk Cache Size: ') + chalk.yellow(cacheStats.diskCacheSize));
     
     // Show top connected notes
-    console.log(`\nTop Connected Notes:`);
+    console.log(chalk.bold('\nTop Connected Notes:'));
     const sortedNotes = Object.entries(results.groupedLinks)
       .map(([note, links]) => ({ note, linkCount: links.length }))
       .sort((a, b) => b.linkCount - a.linkCount)
       .slice(0, 10);
     
     for (const { note, linkCount } of sortedNotes) {
-      console.log(`  ${note}: ${linkCount} links`);
+      console.log(chalk.cyan('  ' + note + ': ') + chalk.green(linkCount + ' links'));
     }
     
-    console.log('===============================\n');
+    console.log(chalk.bold.blue('===============================\n'));
   }
 }
 
