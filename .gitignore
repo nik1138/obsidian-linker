@@ -43,3 +43,22 @@ build/Release
 node_modules/
 jspm_packages/
 
+
+# Build output
+dist/
+
+# Output files
+links.json
+obsidian-links.json
+
+# Runtime data
+cache/
+data/
+backups/
+models/
+
+# Temp test data
+test/temp-vault/
+
+# Personal config
+config.json
