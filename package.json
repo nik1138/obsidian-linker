@@ -1,55 +1,50 @@
 {
   "name": "obsidian-linker",
-  "version": "1.0.0",
-  "description": "Node.js project for finding conceptual links in Obsidian vault using NLP",
-  "main": "index.js",
+  "version": "2.0.0",
+  "description": "Node.js project for finding conceptual links in Obsidian vault using RAG",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "obsidian-linker": "./dist/index.js"
+  },
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js",
-    "test": "node test/basic-test.js",
-    "test:cache": "node test/cache-test.js",
-    "test:insert": "node test/link-insertion-test.js",
-    "test:extended": "node test/extended-link-insertion-test.js",
-    "test:adjust": "node test/adjust-low-links-test.js",
-    "test:adjust:detailed": "node test/adjust-low-links-detailed-test.js",
-    "test:adjust:verify": "node test/adjust-low-links-verification-test.js",
-    "test:adjust:final": "node test/adjust-low-links-final-test.js",
-    "test:adjust:confirmed": "node test/adjust-low-links-confirmed-test.js",
-    "test:adjust:one": "node test/adjust-low-links-one-link-test.js",
-    "test:adjust:proof": "node test/adjust-low-links-proof-test.js",
-    "test:adjust:definitive": "node test/adjust-low-links-definitive-test.js",
-    "test:adjust:two": "node test/adjust-low-links-two-links-test.js",
-    "test:adjust:artificial": "node test/adjust-low-links-artificial-test.js",
-    "test:adjust:true": "node test/adjust-low-links-true-test.js",
-    "test:adjust:one-true": "node test/adjust-low-links-one-true-test.js",
-    "test:adjust:final-verif": "node test/adjust-low-links-final-verification.js",
-    "test:adjust:correct": "node test/adjust-low-links-correct-test.js",
-    "test:adjust:exact-one": "node test/adjust-low-links-exact-one-test.js",
-    "test:iterative": "node test/iterative-adjustment-test.js",
-    "test:watch": "node --watch test/basic-test.js"
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "keywords": [
     "obsidian",
     "nlp",
     "markdown",
     "links",
-    "conceptual"
+    "conceptual",
+    "rag",
+    "lancedb",
+    "embeddings"
   ],
   "author": "SourceCraft",
   "license": "MIT",
   "dependencies": {
+    "@lancedb/lancedb": "^0.15.0",
     "@xenova/transformers": "^2.17.2",
+    "chalk": "^4.1.2",
+    "cli-progress": "^3.12.0",
     "commander": "^14.0.2",
     "fs-extra": "^11.2.0",
     "glob": "^10.3.10",
-    "markdown-it": "^14.1.0",
+    "markdown-it": "^14.2.0",
     "onnxruntime-node": "^1.19.2",
-    "winston": "^3.11.0",
-    "chalk": "^4.1.2",
-    "cli-progress": "^3.12.0"
+    "winston": "^3.11.0"
   },
   "devDependencies": {
-    "jest": "^29.7.0"
+    "@types/fs-extra": "^11.0.4",
+    "@types/markdown-it": "^14.1.0",
+    "@types/node": "^20.19.41",
+    "typescript": "^5.9.3",
+    "vitest": "^1.6.0"
   },
   "engines": {
     "node": ">=18.0.0"
