@@ -16,6 +16,10 @@ interface AnalyzeOptions {
   incremental?: boolean;
   clearCache?: boolean;
   verbose?: boolean;
+  apiKey?: string;
+  maxCandidates?: string;
+  topK?: string;
+  maxChunksPerCandidate?: string;
 }
 
 /**
@@ -27,7 +31,10 @@ export async function analyzeCommand(options: AnalyzeOptions): Promise<void> {
   const config = await configLoader.load(overrides);
 
   if (config.verbose) {
-    console.log(chalk.blue("Configuration:"), config);
+    console.log(chalk.blue("Configuration:"), {
+      ...config,
+      apiKey: config.apiKey ? "***" : undefined,
+    });
   }
 
   // Initialize backend
@@ -80,7 +87,15 @@ export async function analyzeCommand(options: AnalyzeOptions): Promise<void> {
     for (let i = 0; i < notes.length; i++) {
       const note = notes[i];
       try {
-        const connections = await finder.findLinksForNote(note, notes, backend);
+        const connections = await finder.findLinksForNote(note, backend, {
+          maxConnectionsPerNote: config.maxLinksPerNote,
+          minConfidence: config.similarityThreshold,
+          maxCandidates: options.maxCandidates ? parseInt(options.maxCandidates, 10) : undefined,
+          topK: options.topK ? parseInt(options.topK, 10) : undefined,
+          maxChunksPerCandidate: options.maxChunksPerCandidate
+            ? parseInt(options.maxChunksPerCandidate, 10)
+            : undefined,
+        });
         allConnections.set(note.path, connections);
       } catch (error: any) {
         console.error(chalk.yellow(`Warning: failed to analyze ${note.path}:`), error.message);
@@ -115,7 +130,7 @@ export async function analyzeCommand(options: AnalyzeOptions): Promise<void> {
     console.log(`  Total notes: ${notes.length}`);
     console.log(`  Notes with links: ${notesWithLinks}`);
     console.log(`  Total connections: ${totalConnections}`);
-    console.log(`  Average per note: ${(totalConnections / notes.length).toFixed(2)}`);
+    console.log(`  Average per note: ${(notes.length > 0 ? totalConnections / notes.length : 0).toFixed(2)}`);
   } finally {
     await backend.shutdown();
   }

@@ -16,6 +16,14 @@ export class VaultReader {
   }
 
   async scanVault(vaultPath: string): Promise<string[]> {
+    if (!(await fsExtra.pathExists(vaultPath))) {
+      throw new Error(`Vault path does not exist: ${vaultPath}`);
+    }
+    const stats = await fsExtra.stat(vaultPath);
+    if (!stats.isDirectory()) {
+      throw new Error(`Vault path is not a directory: ${vaultPath}`);
+    }
+
     const pattern = path.join(vaultPath, "**/*.md");
     const files = await glob(pattern, {
       nodir: true,
@@ -64,13 +72,30 @@ export class VaultReader {
     const tokens = this.mdParser.parse(markdown, {});
     const textParts: string[] = [];
 
-    for (const token of tokens) {
-      if (token.type === "text") {
-        textParts.push(token.content);
+    const walk = (items: any[]): void => {
+      for (const token of items) {
+        if (token.type === "text") {
+          textParts.push(token.content);
+          continue;
+        }
+        if (
+          token.type === "code_inline" ||
+          token.type === "code_block" ||
+          token.type === "fence" ||
+          token.type === "image" ||
+          token.type === "html_block" ||
+          token.type === "html_inline"
+        ) {
+          continue;
+        }
+        if (Array.isArray(token.children)) {
+          walk(token.children);
+        }
       }
-    }
+    };
 
-    return textParts.join(" ");
+    walk(tokens);
+    return textParts.join(" ").replace(/\s+/g, " ").trim();
   }
 
   extractExistingLinks(markdown: string): string[] {

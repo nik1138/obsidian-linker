@@ -59,6 +59,27 @@ models/
 
 # Temp test data
 test/temp-vault/
+test/test-vault/
+test-results*.json
 
 # Personal config
 config.json
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Vault index / local data
+.obsidian-linker/
+
+# Local agent tooling
+.omo/
+.opencode/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# OS/editor files
+.DS_Store
+Thumbs.db

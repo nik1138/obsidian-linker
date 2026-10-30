@@ -5,6 +5,9 @@ import type { TypedConnection as LogicalConnection } from "./types.js";
 export interface FindOptions {
   maxConnectionsPerNote?: number;
   minConfidence?: number;
+  maxCandidates?: number;
+  topK?: number;
+  maxChunksPerCandidate?: number;
 }
 
 /**
@@ -17,23 +20,10 @@ export class LinkFinder {
     options: FindOptions = {}
   ): Promise<Map<string, LogicalConnection[]>> {
     const results = new Map<string, LogicalConnection[]>();
-    const maxConnections = options.maxConnectionsPerNote ?? 10;
-    const minConfidence = options.minConfidence ?? 0.0;
 
     for (const note of notes) {
       try {
-        const connections: LogicalConnection[] = await backend.analyze(note, {
-          maxCandidates: 5,
-          topK: 10,
-          maxChunksPerCandidate: 3,
-        });
-
-        const filtered = connections
-          .filter((c: LogicalConnection) => c.confidence >= minConfidence)
-          .sort((a: LogicalConnection, b: LogicalConnection) => b.confidence - a.confidence)
-          .slice(0, maxConnections);
-
-        results.set(note.path, filtered);
+        results.set(note.path, await this.findLinksForNote(note, backend, options));
       } catch (error) {
         console.error(`Error analyzing note ${note.path}:`, error);
         results.set(note.path, []);
@@ -45,14 +35,26 @@ export class LinkFinder {
 
   async findLinksForNote(
     note: VaultNote,
-    _allNotes: VaultNote[],
-    backend: Backend
+    backend: Backend,
+    options: FindOptions = {}
   ): Promise<LogicalConnection[]> {
+    const {
+      maxConnectionsPerNote = 10,
+      minConfidence = 0,
+      maxCandidates = 5,
+      topK = 10,
+      maxChunksPerCandidate = 3,
+    } = options;
+
     const connections: LogicalConnection[] = await backend.analyze(note, {
-      maxCandidates: 5,
-      topK: 10,
-      maxChunksPerCandidate: 3,
+      maxCandidates,
+      topK,
+      maxChunksPerCandidate,
     });
-    return connections.sort((a: LogicalConnection, b: LogicalConnection) => b.confidence - a.confidence).slice(0, 10);
+
+    return connections
+      .filter((connection) => connection.confidence >= minConfidence)
+      .sort((a, b) => b.confidence - a.confidence)
+      .slice(0, maxConnectionsPerNote);
   }
 }

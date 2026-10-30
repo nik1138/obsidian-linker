@@ -258,13 +258,12 @@ function pathToNoteName(notePath: string): string {
 /** Offline fallback: use cosine similarity heuristics */
 async function analyzeOffline(
   lancedb: LanceDBClient,
+  embeddingService: EmbeddingService,
   sourceNote: VaultNote,
   topK: number,
   maxChunksPerCandidate: number
 ): Promise<OfflineConnection[]> {
   const sourceChunks = chunkNote(sourceNote);
-  const embeddingService = new EmbeddingService();
-  await embeddingService.initialize();
   const sourceEmbeddings = await embeddingService.embedNoteChunks(sourceChunks);
 
   const candidates = await findCandidateChunks(
@@ -349,6 +348,7 @@ export class RagService {
     if (preferOffline || !this.analyzer.getOnlineStatus()) {
       const offlineConnections = await analyzeOffline(
         this.lancedb,
+        this.embeddingService,
         sourceNote,
         topK,
         maxChunksPerCandidate
@@ -393,6 +393,7 @@ export class RagService {
       // Fallback to offline mode on any error
       const offlineConnections = await analyzeOffline(
         this.lancedb,
+        this.embeddingService,
         sourceNote,
         topK,
         maxChunksPerCandidate

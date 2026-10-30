@@ -341,11 +341,17 @@ This is normal text.`;
 
   describe('getChangedFiles', () => {
     it('should return files modified after given date', async () => {
-      const since = new Date(Date.now() - 1000 * 60 * 60); // 1 hour ago
-      const changed = await reader.getChangedFiles(fixturesDir, since);
+      const testDir = path.join(process.cwd(), 'test', 'temp-vault');
+      await fsExtra.ensureDir(testDir);
+      const testFile = path.join(testDir, 'recent-file.md');
+      await fsExtra.writeFile(testFile, '# Recent file');
 
-      // All fixture files should be considered "changed" since they were modified recently
-      expect(changed.length).toBeGreaterThan(0);
+      const since = new Date(Date.now() - 1000 * 60 * 60); // 1 hour ago
+      const changed = await reader.getChangedFiles(testDir, since);
+
+      expect(changed).toContain(testFile);
+
+      await fsExtra.remove(testDir);
     });
 
     it('should not return files modified before given date', async () => {
@@ -354,8 +360,8 @@ This is normal text.`;
       const testFile = path.join(testDir, 'old-file.md');
       await fsExtra.writeFile(testFile, '# Old file');
 
-      const oneDayAgo = Date.now() - 1000 * 60 * 60 * 24;
-      await fsExtra.utime(testFile, new Date(oneDayAgo), new Date(oneDayAgo));
+      const oneDayAgo = new Date(Date.now() - 1000 * 60 * 60 * 24);
+      await fsExtra.utimes(testFile, oneDayAgo, oneDayAgo);
 
       const since = new Date(Date.now() - 1000 * 60 * 60); // 1 hour ago
       const changed = await reader.getChangedFiles(testDir, since);

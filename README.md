@@ -1,105 +1,58 @@
 # Obsidian Linker
 
-Node.js проект для нахождения концептуальных связей в хранилище Obsidian с использованием NLP-анализа.
+Find hidden conceptual connections between notes in an Obsidian vault and insert them as inline wiki-links.
 
-## Описание
+Obsidian Linker builds a local vector index of your notes, retrieves semantically related passages, and uses an LLM (or an offline similarity fallback) to classify and explain the relationships. Results can be reviewed as JSON or inserted directly into your notes as `[[target|anchor]]` links.
 
-Этот проект анализирует заметки в формате Markdown из хранилища Obsidian и находит скрытые концептуальные связи между ними, используя методы обработки естественного языка. В отличие от стандартных ссылок Obsidian, этот инструмент может находить связи, которые не очевидны при обычном просмотре.
+## Features
 
-## Особенности
+- Scans Markdown notes in an Obsidian vault
+- Chunks notes and generates embeddings locally with Transformers.js
+- Stores vectors in an embedded [LanceDB](https://lancedb.com/) database inside the vault
+- Retrieves candidate notes with RAG and classifies connections (causal, elaboration, contradiction, supporting, sequential, comparison, generalization, reference)
+- Works offline with a similarity-based fallback when no LLM API key is available
+- Inserts links at contextually appropriate anchor phrases
+- Can remove previously inserted links using an insertion marker
+- Incremental indexing for large vaults
+- CLI with progress output
 
-- Анализирует .md файлы из хранилища Obsidian
-- Находит концептуальные связи между заметками
-- Работает с большими хранилищами (более 10,000 заметок)
-- Использует кэширование для оптимизации производительности
-- Сохраняет результаты в JSON файл
-- Предоставляет улучшенный CLI интерфейс с цветным выводом и прогресс-барами
-- Поддерживает инкрементальный анализ (только измененные файлы)
-- Позволяет настраивать порог схожести и количество связей
+## Requirements
 
-## Установка
+- Node.js 18 or newer
+- npm
+- A vault you are willing to modify (back it up or use version control first)
+
+Native modules (`@lancedb/lancedb`, `onnxruntime-node`) are installed by `npm install`. The embedding model is downloaded on first use and cached in `./models`.
+
+## Installation
 
 ```bash
-# Клонируйте репозиторий
-git clone <repository-url>
+git clone https://github.com/nik1138/obsidian-linker.git
 cd obsidian-linker
-
-# Установите зависимости
 npm install
-
-# Запустите тест для проверки работы
-npm test
+npm run build
 ```
 
-## Использование
-
-### Командная строка
+Run the CLI directly:
 
 ```bash
-# Анализ всего хранилища
-node index.js analyze --vault /path/to/your/vault
-
-# Анализ с сохранением результатов в файл
-node index.js analyze --vault /path/to/your/vault --output links.json
-
-# Анализ с настройкой порога схожести (0-1)
-node index.js analyze --vault /path/to/your/vault --threshold 0.4
-
-# Анализ с ограничением количества связей на заметку
-node index.js analyze --vault /path/to/your/vault --max-links 10
-
-# Анализ с понижением достоверности для файлов с низким количеством связей (понижает оценку на 5% для файлов с 1 или менее связями)
-node index.js analyze --vault /path/to/your/vault --adjust-low-links
-
-# Анализ с итеративным понижением порога точности для файлов с низким количеством связей (постепенно понижает порог точности до тех пор, пока у файла не будет как минимум 3 связей)
-node index.js analyze --vault /path/to/your/vault --iterative-adjustment
-
-# Инкрементальный анализ (только измененные файлы)
-node index.js analyze --vault /path/to/your/vault --incremental
-
-# Очистка кэша перед анализом
-node index.js analyze --vault /path/to/your/vault --clear-cache
-
-# Подробный вывод (для отладки)
-node index.js analyze --vault /path/to/your/vault --verbose
-
-# Вставка найденных связей в заметки
-node index.js insert --input links.json
-
-# Вставка связей с настраиваемым заголовком раздела
-node index.js insert --input links.json --title "Похожие статьи"
-
-# Вставка ограниченного количества связей
-node index.js insert --input links.json --limit 5
-
-# Удаление вставленных связей
-node index.js insert --input links.json --remove
+node dist/index.js --help
 ```
 
-## Параметры командной строки
+Or link it globally:
 
-### Команда analyze
-- `-v, --vault <path>` - путь к хранилищу Obsidian (обязательный)
-- `-o, --output <file>` - файл для сохранения результатов (по умолчанию: links.json)
-- `-t, --threshold <number>` - порог схожести для определения связей (0-1, по умолчанию: 0.5)
-- `-m, --max-links <number>` - максимальное количество связей на заметку (по умолчанию: 10)
-- `--adjust-low-links` - понижение достоверности для файлов с низким количеством связей (понижает оценку на 5% для файлов с 1 или менее связями)
-- `--iterative-adjustment` - итеративное понижение порога точности для файлов с низким количеством связей (постепенно понижает порог точности до тех пор, пока у файла не будет как минимум 3 связей)
-- `--incremental` - инкрементальный анализ (только измененные файлы)
-- `--clear-cache` - очистка кэша перед анализом
-- `--verbose` - подробный вывод для отладки
+```bash
+npm link
+obsidian-linker --help
+```
 
-### Команда insert
-- `-i, --input <file>` - файл с результатами анализа (обязательный)
-- `--remove` - удаление вставленных связей вместо добавления
-- `-t, --title <title>` - настраиваемый заголовок для раздела связей (по умолчанию: "Связанные заметки")
-- `-g, --group-by <criteria>` - группировка связей по критериям (file, similarity) (по умолчанию: file)
-- `-l, --limit <number>` - ограничение количества связей на файл
-- `--verbose` - подробный вывод для отладки
+## Configuration
 
-## Файл конфигурации
+Copy the example config and edit the vault path:
 
-Вы можете создать файл `config.json` в корневой директории проекта для настройки параметров по умолчанию:
+```bash
+cp config.example.json config.json
+```
 
 ```json
 {
@@ -109,20 +62,179 @@ node index.js insert --input links.json --remove
   "maxLinksPerNote": 10,
   "incremental": false,
   "clearCache": false,
-  "verbose": false
+  "verbose": false,
+  "modelCacheDir": "./models"
 }
 ```
 
-## Структура проекта
+`config.json` is ignored by git. All values can also be supplied through CLI flags.
 
-- `index.js` - Точка входа
-- `src/vault-reader.js` - Модуль для работы с файлами хранилища
-- `src/nlp-processor.js` - Модуль для NLP-анализа
-- `src/link-finder.js` - Модуль для поиска связей
-- `src/cache-manager.js` - Модуль для кэширования
-- `src/link-inserter.js` - Модуль для вставки связей в файлы
-- `src/cli.js` - CLI интерфейс
+### LLM API key
 
-## Лицензия
+Online analysis uses an OpenAI-compatible StepFun endpoint. Set the key in your environment:
+
+```bash
+export STEPFUN_API_KEY="your-api-key"
+```
+
+You can also pass `--api-key`, but environment variables are safer because CLI arguments may be stored in shell history.
+
+Without a key, the analyzer falls back to local embedding similarity.
+
+## Usage
+
+### Analyze a vault
+
+```bash
+node dist/index.js analyze --vault /path/to/vault
+```
+
+```bash
+# Custom output file and threshold
+node dist/index.js analyze --vault /path/to/vault \
+  --output obsidian-links.json \
+  --threshold 0.5 \
+  --max-links 10
+
+# Incremental indexing
+node dist/index.js analyze --vault /path/to/vault --incremental
+
+# Verbose output
+node dist/index.js analyze --vault /path/to/vault --verbose
+```
+
+### Insert links
+
+```bash
+# Preview first
+node dist/index.js insert --input obsidian-links.json --dry-run
+
+# Insert
+node dist/index.js insert --input obsidian-links.json
+
+# Limit links per note
+node dist/index.js insert --input obsidian-links.json --limit 5
+```
+
+Inserted links look like this:
+
+```markdown
+Some sentence with a [[Related Note|anchor phrase]]<!-- obsidian-linker: inserted -->.
+```
+
+The HTML comment marker lets `remove` find and delete links that were inserted by this tool.
+
+### Remove inserted links
+
+```bash
+node dist/index.js remove --input obsidian-links.json
+```
+
+### CLI reference
+
+#### `analyze`
+
+| Option | Description | Default |
+| --- | --- | --- |
+| `-v, --vault <path>` | Path to the Obsidian vault | from config |
+| `-o, --output <file>` | Output JSON file | `obsidian-links.json` |
+| `-t, --threshold <number>` | Minimum confidence (0–1) | `0.5` |
+| `-m, --max-links <number>` | Maximum connections per note | `10` |
+| `--incremental` | Only index changed notes | `false` |
+| `--clear-cache` | Clear cache before analysis | `false` |
+| `--verbose` | Verbose output (API key is redacted) | `false` |
+| `--api-key <key>` | StepFun API key (prefer env var) | — |
+| `--max-candidates <number>` | Candidate notes sent to the LLM | `5` |
+| `--top-k <number>` | Similar chunks retrieved per source chunk | `10` |
+| `--max-chunks-per-candidate <number>` | Chunks kept per candidate note | `3` |
+
+#### `insert`
+
+| Option | Description | Default |
+| --- | --- | --- |
+| `-i, --input <file>` | Connections JSON file | `obsidian-links.json` |
+| `--dry-run` | Preview without writing | `false` |
+| `-l, --limit <number>` | Limit links per note | `10` |
+
+#### `remove`
+
+| Option | Description | Default |
+| --- | --- | --- |
+| `-i, --input <file>` | Connections JSON file | `obsidian-links.json` |
+
+## How it works
+
+1. Scan the vault for Markdown files.
+2. Split notes into overlapping chunks.
+3. Embed chunks locally with `Xenova/all-MiniLM-L6-v2` (384 dimensions).
+4. Store chunks and vectors in `<vault>/.obsidian-linker/lancedb`.
+5. For each note, retrieve similar chunks from other notes.
+6. Send the source note and candidate excerpts to the LLM, which returns typed connections and anchor phrases as JSON.
+7. If the LLM is unavailable, fall back to embedding similarity.
+8. Optionally insert links into the source notes.
+
+## Output format
+
+```json
+{
+  "generatedAt": "2026-01-01T00:00:00.000Z",
+  "vaultPath": "/path/to/vault",
+  "totalNotes": 42,
+  "connections": [
+    {
+      "sourcePath": "/path/to/vault/Note.md",
+      "sourceName": "Note",
+      "connections": [
+        {
+          "targetNote": "Related Note",
+          "targetPath": "/path/to/vault/Related Note.md",
+          "type": "elaboration",
+          "confidence": 0.87,
+          "explanation": "Related Note expands on the same concept.",
+          "anchors": [
+            {
+              "sourcePhrase": "exact phrase from the source note",
+              "reason": "Why this is a good anchor",
+              "position": 123
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Development
+
+```bash
+npm install
+npm run build        # compile TypeScript to dist/
+npm run dev          # watch mode
+npm test             # run the Vitest suite
+npm run test:coverage
+```
+
+The project uses TypeScript with ESM (`NodeNext`). Tests live in `test/`, with a small fixture vault in `test/fixtures/small-vault`.
+
+## Project structure
+
+```
+src/
+  index.ts             CLI entry point
+  config.ts            Config loading and CLI overrides
+  cli/                 analyze, insert, remove commands
+  backend/             chunking, embeddings, LanceDB, RAG, LLM client
+  links/               link finding and insertion/removal
+  vault/               vault scanning and Markdown parsing
+test/                  Vitest unit and integration tests
+```
+
+## Security
+
+- No API keys are committed. Use `STEPFUN_API_KEY` or your local `config.json` (ignored by git).
+- The tool writes to notes in place. Use version control or a backup, and start with `insert --dry-run`.
+
+## License
 
 MIT

@@ -42,7 +42,7 @@ export interface EmbeddingRecord {
   chunkId: string;
   /** Source note path (for filtering queries by note scope) */
   notePath: string;
-  /** 384-dimensional float32 vector from google/embeddinggemma-300m */
+  /** 384-dimensional float32 vector from Xenova/all-MiniLM-L6-v2 */
   vector: Float32Array;
   /** Embedding model identifier, e.g. "google/embeddinggemma-300m" */
   modelId: string;
@@ -147,30 +147,6 @@ export interface IndexDiff {
 export interface LlmClient {
   chat(messages: LlmMessage[], options?: LlmOptions): Promise<LlmResponse>;
   healthCheck(): Promise<boolean>;
-}
-
-/** LLM message for chat completion */
-export interface LlmMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
-}
-
-/** Options for LLM chat call */
-export interface LlmOptions {
-  temperature?: number;
-  maxTokens?: number;
-  responseFormat?: "text" | "json_object";
-  timeout?: number;
-}
-
-/** Response from LLM chat completion */
-export interface LlmResponse {
-  content: string;
-  finishReason: "stop" | "length" | "error";
-  usage: {
-    promptTokens: number;
-    completionTokens: number;
-  };
 }
 
 /** LLM message for chat completion */
@@ -348,7 +324,7 @@ export interface Backend {
 // Constants
 // ============================================================
 
-export const EMBEDDING_MODEL_ID = "google/embeddinggemma-300m";
+export const EMBEDDING_MODEL_ID = "Xenova/all-MiniLM-L6-v2";
 export const EMBEDDING_DIM = 384;
 export const DEFAULT_CHUNK_TOKENS = 512;
 export const DEFAULT_OVERLAP_TOKENS = 50;

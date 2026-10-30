@@ -93,14 +93,14 @@ export class LanceDBClient {
         "byteOffsetEnd",
       ]);
     if (excludeNotePath) {
-      query = query.where(`notePath != '${excludeNotePath}'`);
+      query = query.where(`notePath != '${this.escapeSqlString(excludeNotePath)}'`);
     }
     return query.toArray() as Promise<NoteChunkRecord[]>;
   }
 
   async upsertMetadata(metadata: NoteMetadata): Promise<void> {
     if (!this.metadataTable) throw new Error("LanceDB not initialized");
-    await this.metadataTable.delete(`notePath = '${metadata.notePath}'`);
+    await this.metadataTable.delete(`notePath = '${this.escapeSqlString(metadata.notePath)}'`);
     await this.metadataTable.add([metadata as any]);
   }
 
@@ -111,7 +111,12 @@ export class LanceDBClient {
 
   async deleteNoteChunks(notePath: string): Promise<void> {
     if (!this.chunksTable) throw new Error("LanceDB not initialized");
-    await this.chunksTable.delete(`notePath = '${notePath}'`);
+    await this.chunksTable.delete(`notePath = '${this.escapeSqlString(notePath)}'`);
+  }
+
+  async deleteMetadata(notePath: string): Promise<void> {
+    if (!this.metadataTable) throw new Error("LanceDB not initialized");
+    await this.metadataTable.delete(`notePath = '${this.escapeSqlString(notePath)}'`);
   }
 
   async getMetadata(notePath: string): Promise<NoteMetadata | null> {
@@ -134,6 +139,10 @@ export class LanceDBClient {
   async rebuildVectorIndex(): Promise<void> {
     if (!this.chunksTable) throw new Error("LanceDB not initialized");
     // Index creation is automatic in LanceDB; no manual rebuild needed
+  }
+
+  private escapeSqlString(value: string): string {
+    return value.replace(/'/g, "''");
   }
 
   async close(): Promise<void> {

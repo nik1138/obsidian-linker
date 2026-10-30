@@ -223,7 +223,7 @@ export class BackendImpl implements Backend {
     for (let i = 0; i < diff.deletedNotes.length; i++) {
       const notePath = diff.deletedNotes[i];
       await this.lancedb.deleteNoteChunks(notePath);
-      await this.lancedb.getMetadataTable().delete(`notePath = "${notePath}"`);
+      await this.lancedb.deleteMetadata(notePath);
       onProgress?.({ phase: "chunking", processed: i + 1, total: diff.deletedNotes.length });
     }
 
@@ -338,10 +338,6 @@ export class BackendImpl implements Backend {
 
   /** Clean up resources */
   async shutdown(): Promise<void> {
-    if (this.ragService) {
-      await this.ragService.analyzeNote({} as any, {}); // Trigger cleanup if needed
-    }
-
     if (this.lancedb) {
       await this.lancedb.close();
     }
